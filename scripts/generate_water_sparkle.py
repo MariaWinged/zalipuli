@@ -11,10 +11,13 @@ from PIL import Image, ImageFilter
 # НАСТРОЙКИ
 # ============================================================
 
+# Количество искр
+PARTICLE_COUNT = 10000
+
 SHIFT = 50
 
-DROW_WIDTH = 1024 * 4
-DROW_HEIGHT = 1024 * 4
+DROW_WIDTH = 1024 * 2
+DROW_HEIGHT = 1024 * 2
 
 WIDTH = DROW_WIDTH + SHIFT * 2
 HEIGHT = DROW_HEIGHT + SHIFT * 2
@@ -31,11 +34,8 @@ SEED = 17
 MASK_PATH = "water_mask.png"
 
 # Выходные данные
-OUTPUT_DIR = "../sparkle_frames"
-GIF_PATH = "../water_sparkles_preview.avif"
-
-# Количество искр
-PARTICLE_COUNT = 50000
+OUTPUT_DIR = "../assets/sparkles/frames"
+AVIF_PATH = "../assets/sparkles/water_sparkles_preview.avif"
 
 # Размеры частиц
 MIN_RADIUS = 0.8
@@ -304,18 +304,14 @@ def generate_frames() -> list[Image.Image]:
 # GIF
 # ============================================================
 
-def rgba_frames_to_gif_preview(frames_rgba: list[Image.Image], gif_path, fps):
-    """
-    GIF не поддерживает мягкую альфу как PNG,
-    поэтому делаем preview, композитя кадры на фон.
-    """
+def rgba_frames_to_avif_preview(frames_rgba: list[Image.Image], avif_path, fps):
     if not frames_rgba:
         return
 
     duration = int(1000 / fps)
 
     frames_rgba[0].save(
-        gif_path,
+        avif_path,
         format="AVIF",
         save_all=True,
         append_images=frames_rgba[1:],
@@ -325,7 +321,7 @@ def rgba_frames_to_gif_preview(frames_rgba: list[Image.Image], gif_path, fps):
         optimize=False
     )
 
-    print(f"[OK] GIF saved: {gif_path}")
+    print(f"[OK] AVIF saved: {avif_path}")
 
 # ============================================================
 # MAIN
@@ -333,5 +329,5 @@ def rgba_frames_to_gif_preview(frames_rgba: list[Image.Image], gif_path, fps):
 
 if __name__ == "__main__":
     frames = generate_frames()
-    rgba_frames_to_gif_preview(frames, GIF_PATH, FPS)
+    rgba_frames_to_avif_preview(frames, AVIF_PATH, FPS)
     print("[DONE] Loopable sparkle animation generated.")
