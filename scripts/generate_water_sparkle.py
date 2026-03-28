@@ -11,12 +11,20 @@ from PIL import Image, ImageFilter
 # НАСТРОЙКИ
 # ============================================================
 
-WIDTH = 1024
-HEIGHT = 1024
+SHIFT = 50
 
-FRAMES = 72          # количество кадров в цикле
+DROW_WIDTH = 1024 * 4
+DROW_HEIGHT = 1024 * 4
+
+WIDTH = DROW_WIDTH + SHIFT * 2
+HEIGHT = DROW_HEIGHT + SHIFT * 2
+
+
+FRAMES = 72       # количество кадров в цикле
+FRAMES_SHIFT=18
+
 FPS = 18             # fps для gif
-SEED = 42
+SEED = 17
 
 # Маска воды:
 # белое = внутри воды, черное = вне воды
@@ -24,13 +32,10 @@ MASK_PATH = "water_mask.png"
 
 # Выходные данные
 OUTPUT_DIR = "../sparkle_frames"
-GIF_PATH = "../water_sparkles_preview.gif"
-
-# GIF не умеет мягкую альфу, поэтому делаем превью на фоне
-GIF_BACKGROUND = (0, 0, 0)
+GIF_PATH = "../water_sparkles_preview.avif"
 
 # Количество искр
-PARTICLE_COUNT = 180
+PARTICLE_COUNT = 50000
 
 # Размеры частиц
 MIN_RADIUS = 0.8
@@ -64,68 +69,23 @@ SPAWN_MASK_SHRINK = 9   # нечётное число: 3,5,7,9...
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # ============================================================
 
-def clamp(x, a, b):
+def clamp(x, a, b: float) -> float:
     return max(a, min(b, x))
 
-def lerp(a, b, t):
+def lerp(a, b, t: float) -> float:
     return a + (b - a) * t
 
-def lerp_color(c1, c2, t):
+def lerp_color(c1, c2: tuple[int, ...], t: float) -> tuple[int, ...]:
     return tuple(int(lerp(c1[i], c2[i], t)) for i in range(3))
 
-def hsv_to_rgb255(h, s, v):
+def hsv_to_rgb255(h, s, v: float) -> tuple[int, int, int]:
     r, g, b = colorsys.hsv_to_rgb(h, s, v)
     return int(r * 255), int(g * 255), int(b * 255)
 
-def make_default_mask(width, height):
-    """
-    Если нет water_mask.png, создаём приближённую внутреннюю область бутылки.
-    """
-    yy, xx = np.mgrid[0:height, 0:width]
+def random_point() -> tuple[int, int]:
+    return random.randint(0, DROW_WIDTH) + SHIFT, random.randint(0, DROW_HEIGHT) + SHIFT
 
-    cx = width // 2
-    body_half_w = int(width * 0.11)
-    top_y = int(height * 0.16)
-    bottom_y = int(height * 0.92)
-    cap_radius_y = int(body_half_w * 0.50)
-
-    inside_rect = (
-        (xx >= cx - body_half_w) &
-        (xx <= cx + body_half_w) &
-        (yy >= top_y + cap_radius_y) &
-        (yy <= bottom_y - cap_radius_y)
-    )
-
-    top_ellipse = (
-        (((xx - cx) / max(body_half_w, 1)) ** 2) +
-        (((yy - (top_y + cap_radius_y)) / max(cap_radius_y, 1)) ** 2) <= 1.0
-    ) & (yy < top_y + cap_radius_y)
-
-    bottom_ellipse = (
-        (((xx - cx) / max(body_half_w, 1)) ** 2) +
-        (((yy - (bottom_y - cap_radius_y)) / max(cap_radius_y, 1)) ** 2) <= 1.0
-    ) & (yy > bottom_y - cap_radius_y)
-
-    mask = np.zeros((height, width), dtype=np.uint8)
-    mask[inside_rect | top_ellipse | bottom_ellipse] = 255
-
-    return Image.fromarray(mask, mode="L")
-
-def load_mask(path, width, height):
-    if os.path.exists(path):
-        mask = Image.open(path).convert("L").resize((width, height), Image.LANCZOS)
-        return mask
-    print(f"[INFO] Маска {path} не найдена. Использую встроенную приближенную форму.")
-    return make_default_mask(width, height)
-
-def random_point_from_mask(mask_arr):
-    ys, xs = np.where(mask_arr > 0)
-    if len(xs) == 0:
-        raise ValueError("Маска воды пустая.")
-    idx = random.randint(0, len(xs) - 1)
-    return float(xs[idx]), float(ys[idx])
-
-def draw_soft_particle(canvas, x, y, radius, rgb, alpha):
+def draw_soft_particle(canvas, x, y, radius, rgb, alpha, is_orig=True):
     """
     Рисует мягкую частицу на RGBA canvas (numpy).
     """
@@ -170,6 +130,15 @@ def draw_soft_particle(canvas, x, y, radius, rgb, alpha):
 
     canvas[y0:y1 + 1, x0:x1 + 1] = np.clip(out * 255.0, 0, 255).astype(np.uint8)
 
+    if is_orig and x < SHIFT * 2:
+        draw_soft_particle(canvas, x + DROW_WIDTH, y, radius, rgb, alpha, False)
+    if is_orig and y < SHIFT * 2:
+        draw_soft_particle(canvas, x, y + DROW_HEIGHT, radius, rgb, alpha, False)
+    if is_orig and x > DROW_WIDTH:
+        draw_soft_particle(canvas, x - DROW_WIDTH, y, radius, rgb, alpha, False)
+    if is_orig and y > DROW_HEIGHT:
+        draw_soft_particle(canvas, x, y - DROW_HEIGHT, radius, rgb, alpha, False)
+
 # ============================================================
 # МОДЕЛЬ ЧАСТИЦ
 # ============================================================
@@ -196,23 +165,11 @@ class Particle:
     drift_speed_x: float
     drift_speed_y: float
 
-def create_particles(mask_img, count):
-    """
-    Создаём частицы в безопасной зоне внутри маски, чтобы меньше вылезали за края.
-    """
-    if SPAWN_MASK_SHRINK >= 3:
-        spawn_mask = mask_img.filter(ImageFilter.MinFilter(size=SPAWN_MASK_SHRINK))
-    else:
-        spawn_mask = mask_img
-
-    spawn_arr = np.array(spawn_mask, dtype=np.uint8)
-    if np.count_nonzero(spawn_arr) == 0:
-        spawn_arr = np.array(mask_img, dtype=np.uint8)
-
+def create_particles(count):
     particles = []
 
     for _ in range(count):
-        x, y = random_point_from_mask(spawn_arr)
+        x, y = random_point()
 
         # Случайный цвет искры
         hue = random.random()
@@ -257,18 +214,18 @@ def particle_state(p: Particle, t):
     t в диапазоне [0, 1). Все функции периодические => идеальный loop.
     """
     # Основное мерцание
-    tw1 = 0.5 + 0.5 * math.sin(math.tau * (t * p.twinkle_speed_1) + p.phase_1)
+    tw1 = p.twinkle_speed_1 * (0.5 + 0.5 * math.sin(math.tau * t + p.phase_1))
     tw1 = tw1 ** 2.6
 
     # Медленная дополнительная модуляция, тоже цикличная
-    tw2 = 0.72 + 0.28 * (0.5 + 0.5 * math.sin(math.tau * (t * p.twinkle_speed_2) + p.phase_2))
+    tw2 = p.twinkle_speed_2 * (0.72 + 0.28 * (0.5 + 0.5 * math.sin(math.tau * t + p.phase_2)))
 
     alpha = p.alpha_peak * tw1 * tw2
     alpha = clamp(alpha, 0.0, 1.0)
 
     # Очень медленный дрейф
-    x = p.base_x + math.sin(math.tau * (t * p.drift_speed_x) + p.drift_phase_x) * DRIFT_AMPLITUDE_X
-    y = p.base_y + math.cos(math.tau * (t * p.drift_speed_y) + p.drift_phase_y) * DRIFT_AMPLITUDE_Y
+    x = p.base_x + math.sin(math.tau * t + p.drift_phase_x) * DRIFT_AMPLITUDE_X * p.drift_speed_x
+    y = p.base_y + math.cos(math.tau * t + p.drift_phase_y) * DRIFT_AMPLITUDE_Y * p.drift_speed_y
 
     # Базовый случайный цвет искры
     base_color = hsv_to_rgb255(p.hue, p.saturation, p.value)
@@ -289,20 +246,17 @@ def particle_state(p: Particle, t):
 # ГЕНЕРАЦИЯ
 # ============================================================
 
-def generate_frames():
+def generate_frames() -> list[Image.Image]:
     random.seed(SEED)
     np.random.seed(SEED)
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    mask_img = load_mask(MASK_PATH, WIDTH, HEIGHT)
-    mask_arr = np.array(mask_img, dtype=np.uint8)
-
-    particles = create_particles(mask_img, PARTICLE_COUNT)
+    particles = create_particles(PARTICLE_COUNT)
     frames_rgba = []
 
-    for frame_idx in range(FRAMES):
-        t = frame_idx / FRAMES  # [0,1), loop без разрыва
+    for frame_idx in range(-FRAMES_SHIFT, FRAMES):
+        t = (frame_idx % FRAMES) / FRAMES  # [0,1), loop без разрыва
 
         canvas = np.zeros((HEIGHT, WIDTH, 4), dtype=np.uint8)
 
@@ -310,13 +264,6 @@ def generate_frames():
             x, y, radius, color, alpha = particle_state(p, t)
 
             if alpha < ALPHA_MIN_VISIBLE:
-                continue
-
-            ix = int(round(x))
-            iy = int(round(y))
-            if ix < 0 or iy < 0 or ix >= WIDTH or iy >= HEIGHT:
-                continue
-            if mask_arr[iy, ix] == 0:
                 continue
 
             draw_soft_particle(canvas, x, y, radius, color, alpha)
@@ -327,19 +274,23 @@ def generate_frames():
                 glow_radius = radius * 2.5
                 draw_soft_particle(canvas, x, y, glow_radius, color, glow_alpha)
 
-        frame = Image.fromarray(canvas, mode="RGBA")
+        frame: Image.Image = Image.fromarray(canvas, mode="RGBA")
 
         if BLUR_RADIUS > 0:
             frame = frame.filter(ImageFilter.GaussianBlur(radius=BLUR_RADIUS))
 
-        # Повторно режем по маске, чтобы blur не вылезал наружу
-        frame_arr = np.array(frame, dtype=np.uint8)
-        frame_arr[..., 3] = (
-            frame_arr[..., 3].astype(np.float32) *
-            (mask_arr.astype(np.float32) / 255.0)
-        ).astype(np.uint8)
+        frame = frame.crop((SHIFT, SHIFT, DROW_WIDTH + SHIFT, DROW_HEIGHT + SHIFT))
 
-        frame = Image.fromarray(frame_arr, mode="RGBA")
+        if not (0 <= frame_idx < FRAMES):
+            continue
+
+        # для проверки бесшовности
+        # frame_big = Image.new("RGBA", (DROW_WIDTH * 2, DROW_HEIGHT * 2), (0, 0, 0, 0))
+        # frame_big.paste(frame, (0, 0))
+        # frame_big.paste(frame, (0, DROW_HEIGHT))
+        # frame_big.paste(frame, (DROW_WIDTH, 0))
+        # frame_big.paste(frame, (DROW_WIDTH, DROW_HEIGHT))
+        # frame = frame_big.crop((DROW_WIDTH / 2, DROW_HEIGHT / 2, DROW_WIDTH + DROW_WIDTH / 2, DROW_HEIGHT + DROW_HEIGHT / 2))
 
         frame_path = os.path.join(OUTPUT_DIR, f"frame_{frame_idx:03d}.png")
         frame.save(frame_path)
@@ -353,7 +304,7 @@ def generate_frames():
 # GIF
 # ============================================================
 
-def rgba_frames_to_gif_preview(frames_rgba, gif_path, fps, bg_color=(0, 0, 0)):
+def rgba_frames_to_gif_preview(frames_rgba: list[Image.Image], gif_path, fps):
     """
     GIF не поддерживает мягкую альфу как PNG,
     поэтому делаем preview, композитя кадры на фон.
@@ -362,17 +313,12 @@ def rgba_frames_to_gif_preview(frames_rgba, gif_path, fps, bg_color=(0, 0, 0)):
         return
 
     duration = int(1000 / fps)
-    gif_frames = []
 
-    for frame in frames_rgba:
-        bg = Image.new("RGBA", frame.size, bg_color + (255,))
-        composed = Image.alpha_composite(bg, frame).convert("P", palette=Image.ADAPTIVE, colors=255)
-        gif_frames.append(composed)
-
-    gif_frames[0].save(
+    frames_rgba[0].save(
         gif_path,
+        format="AVIF",
         save_all=True,
-        append_images=gif_frames[1:],
+        append_images=frames_rgba[1:],
         duration=duration,
         loop=0,
         disposal=2,
@@ -387,5 +333,5 @@ def rgba_frames_to_gif_preview(frames_rgba, gif_path, fps, bg_color=(0, 0, 0)):
 
 if __name__ == "__main__":
     frames = generate_frames()
-    rgba_frames_to_gif_preview(frames, GIF_PATH, FPS, GIF_BACKGROUND)
+    rgba_frames_to_gif_preview(frames, GIF_PATH, FPS)
     print("[DONE] Loopable sparkle animation generated.")
