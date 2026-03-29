@@ -1,3 +1,6 @@
 [submodule "zalipuli-backend"]
 	path = zalipuli-backend
 	url = git@github.com:MariaWinged/zalipuli-backend.git
+[submodule "zalipuli-godot"]
+	path = zalipuli-godot
+	url = git@github.com:MariaWinged/zalipuli-godot.git
