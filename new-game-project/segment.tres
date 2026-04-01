@@ -1,0 +1,10 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://cxrfmgisbs5ax"]
+
+[ext_resource type="Shader" uid="uid://b8266hv4f3ve3" path="res://segment.gdshader" id="1_b5rev"]
+
+[resource]
+resource_name = "segment"
+shader = ExtResource("1_b5rev")
+shader_parameter/hframes = 9
+shader_parameter/vframes = 8
+shader_parameter/fps = 8.0

@@ -3,6 +3,7 @@ import math
 import random
 import colorsys
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 from PIL import Image, ImageFilter
@@ -36,6 +37,7 @@ MASK_PATH = "water_mask.png"
 # Выходные данные
 OUTPUT_DIR = "../assets/sparkles/frames"
 AVIF_PATH = "../assets/sparkles/water_sparkles_preview.avif"
+ATLAS_PATH = "../assets/sparkles/sparkles_texture.png"
 
 # Размеры частиц
 MIN_RADIUS = 0.8
@@ -327,7 +329,19 @@ def rgba_frames_to_avif_preview(frames_rgba: list[Image.Image], avif_path, fps):
 # MAIN
 # ============================================================
 
+def create_atlas_texture(frames_rgba: list[Image.Image], atlas_path) -> Optional[Image.Image]:
+    if not frames_rgba:
+        return
+
+    width = DROW_WIDTH * 9
+    height = DROW_HEIGHT * 8
+    img = Image.new("RGBA", (width, height))
+    for idx, frame in enumerate(frames_rgba):
+        img.paste(frame, ((idx % 9) * DROW_WIDTH, (idx // 9) * DROW_HEIGHT))
+
+    img.save(atlas_path, "PNG")
+
 if __name__ == "__main__":
     frames = generate_frames()
     rgba_frames_to_avif_preview(frames, AVIF_PATH, FPS)
-    print("[DONE] Loopable sparkle animation generated.")
+    create_atlas_texture(frames, ATLAS_PATH)
