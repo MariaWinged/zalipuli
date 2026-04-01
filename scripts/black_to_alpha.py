@@ -1,8 +1,8 @@
 import numpy as np
 from PIL import Image
 
-INPUT_IMG = "../assets/vial/filled_fullsize.png"
-OUTPUT_IMG = "../assets/vial/filled_alpha.png"
+INPUT_IMG = "../assets/vial/big-size/back_level.png"
+OUTPUT_IMG = "../assets/vial/big-size/back_level_alpha.png"
 
 def process_image(input_path, output_path):
     """
