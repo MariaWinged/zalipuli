@@ -17,14 +17,16 @@ PARTICLE_COUNT = 10000
 
 SHIFT = 50
 
-DROW_WIDTH = 1024 * 2
-DROW_HEIGHT = 1024 * 2
+DROW_WIDTH = 910
+DROW_HEIGHT = 910
 
 WIDTH = DROW_WIDTH + SHIFT * 2
 HEIGHT = DROW_HEIGHT + SHIFT * 2
 
+ATLAS_WIDTH = 9
+ATLAS_HEIGHT = 9
 
-FRAMES = 72       # количество кадров в цикле
+FRAMES = ATLAS_WIDTH * ATLAS_HEIGHT       # количество кадров в цикле
 FRAMES_SHIFT=18
 
 FPS = 18             # fps для gif
@@ -40,8 +42,8 @@ AVIF_PATH = "../assets/sparkles/water_sparkles_preview.avif"
 ATLAS_PATH = "../assets/sparkles/sparkles_texture.png"
 
 # Размеры частиц
-MIN_RADIUS = 0.8
-MAX_RADIUS = 3.2
+MIN_RADIUS = 0.4
+MAX_RADIUS = 1.5
 
 # Для менее насыщенных искр разрешаем быть более непрозрачными,
 # для насыщенных — наоборот.
@@ -333,11 +335,11 @@ def create_atlas_texture(frames_rgba: list[Image.Image], atlas_path) -> Optional
     if not frames_rgba:
         return
 
-    width = DROW_WIDTH * 9
-    height = DROW_HEIGHT * 8
+    width = DROW_WIDTH * ATLAS_WIDTH
+    height = DROW_HEIGHT * ATLAS_HEIGHT
     img = Image.new("RGBA", (width, height))
     for idx, frame in enumerate(frames_rgba):
-        img.paste(frame, ((idx % 9) * DROW_WIDTH, (idx // 9) * DROW_HEIGHT))
+        img.paste(frame, ((idx % ATLAS_WIDTH) * DROW_WIDTH, (idx // ATLAS_WIDTH) * DROW_HEIGHT))
 
     img.save(atlas_path, "PNG")
 
