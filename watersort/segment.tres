@@ -1,0 +1,12 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://cxrfmgisbs5ax"]
+
+[ext_resource type="Shader" uid="uid://b8266hv4f3ve3" path="res://segment.gdshader" id="1_b5rev"]
+[ext_resource type="Texture2D" uid="uid://cd7plrdvvgp1a" path="res://game/sparkles_texture.png" id="2_hnnr5"]
+
+[resource]
+resource_name = "segment"
+shader = ExtResource("1_b5rev")
+shader_parameter/sparkles_texture = ExtResource("2_hnnr5")
+shader_parameter/hframes = 9
+shader_parameter/vframes = 9
+shader_parameter/fps = 18.0

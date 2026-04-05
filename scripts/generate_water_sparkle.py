@@ -42,8 +42,8 @@ AVIF_PATH = "../assets/sparkles/water_sparkles_preview.avif"
 ATLAS_PATH = "../assets/sparkles/sparkles_texture.png"
 
 # Размеры частиц
-MIN_RADIUS = 0.4
-MAX_RADIUS = 1.5
+MIN_RADIUS = 0.8
+MAX_RADIUS = 3.2
 
 # Для менее насыщенных искр разрешаем быть более непрозрачными,
 # для насыщенных — наоборот.

@@ -1,0 +1,43 @@
+[gd_scene format=3 uid="uid://cpa1wexdulmmg"]
+
+[ext_resource type="Texture2D" uid="uid://bja3q3kcstotf" path="res://game/back_level_alpha.png" id="1_7toc6"]
+[ext_resource type="Script" uid="uid://d203nnk0j54oq" path="res://Vial.cs" id="1_hfkda"]
+[ext_resource type="Texture2D" uid="uid://dnpxghn5ncvf3" path="res://game/segment_1.png" id="2_cbba7"]
+[ext_resource type="Material" uid="uid://cxrfmgisbs5ax" path="res://segment.tres" id="2_hfkda"]
+[ext_resource type="Texture2D" uid="uid://qkfk27xknqks" path="res://game/segment_2.png" id="3_hfkda"]
+[ext_resource type="Texture2D" uid="uid://b1spowlsjeoxh" path="res://game/segment_3.png" id="4_0idfn"]
+[ext_resource type="Texture2D" uid="uid://dc8h3xmc8mr6f" path="res://game/segment_4.png" id="5_ecc2k"]
+[ext_resource type="Texture2D" uid="uid://b6xfjakjle4ct" path="res://game/filled_alpha.png" id="6_mw4at"]
+
+[node name="Vial" type="Node2D" unique_id=813672807]
+script = ExtResource("1_hfkda")
+
+[node name="BackLevelAlpha" type="Sprite2D" parent="." unique_id=416494368]
+texture = ExtResource("1_7toc6")
+
+[node name="Segment1" type="Sprite2D" parent="." unique_id=896091438]
+material = ExtResource("2_hfkda")
+instance_shader_parameters/color = Color(0.78431374, 0, 0, 1)
+instance_shader_parameters/filled = 1
+texture = ExtResource("2_cbba7")
+
+[node name="Segment2" type="Sprite2D" parent="." unique_id=2033965237]
+material = ExtResource("2_hfkda")
+instance_shader_parameters/color = Color(0, 0.78431374, 0, 1)
+instance_shader_parameters/filled = 1
+texture = ExtResource("3_hfkda")
+
+[node name="Segment3" type="Sprite2D" parent="." unique_id=1301055076]
+material = ExtResource("2_hfkda")
+instance_shader_parameters/color = Color(0, 0, 0.78431374, 1)
+instance_shader_parameters/filled = 1
+texture = ExtResource("4_0idfn")
+
+[node name="Segment4" type="Sprite2D" parent="." unique_id=281502103]
+material = ExtResource("2_hfkda")
+instance_shader_parameters/color = Color(1.9997299, 1.9997299, 0, 1)
+instance_shader_parameters/filled = 1
+texture = ExtResource("5_ecc2k")
+
+[node name="FilledAlpha" type="Sprite2D" parent="." unique_id=654528825]
+texture = ExtResource("6_mw4at")
